@@ -1,10 +1,12 @@
 install:
 	@git pull
 	@clear
-	apt-get install bash curl wget jq
-	apt-get install python python-pip
-	apt-get install clang ncurses-utils
-	apt-get install nano php neofetch
+	apt-get update
+	apt-get install -y bash curl wget jq
+	apt-get install -y python3 python3-pip python-is-python3
+	apt-get install -y clang ncurses-utils
+	apt-get install -y nano php neofetch
+	python -m pip install --upgrade pip
 	python -m pip install -r data/requirements.txt
 	@gcc main.c -o main
 	@clear
