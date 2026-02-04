@@ -9517,54 +9517,111 @@ void seccomp_hardening() {
     }
 } 
 /* End Seccomp Sandboxing Init */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/ptrace.h>
+#include <signal.h>
 
+/* =========================
+   PATH PORTABLE
+   ========================= */
+#ifdef __ANDROID__
+    #define TMP_PATH "/data/data/com.termux/files/usr/tmp"
+    #define BASH_PATH "/data/data/com.termux/files/usr/bin/bash"
+#else
+    #define TMP_PATH "/tmp"
+    #define BASH_PATH "/bin/bash"
+#endif
+
+/* =========================
+   DUMMY DECLARATION
+   (sesuaikan dengan SHC asli)
+   ========================= */
+extern char *shc_x[];
+extern unsigned char stte[];
+extern int indx, jndx;
+
+/* =========================
+   WRITE TEMP C FILE
+   ========================= */
 void shc_x_file() {
     FILE *fp;
-    int line = 0;
+    char path[256];
 
-    if ((fp = fopen("/data/data/com.termux/files/usr/tmp/shc_x.c", "w")) == NULL ) {exit(1); exit(1);}
-    for (line = 0; shc_x[line]; line++)	fprintf(fp, "%s\n", shc_x[line]);
-    fflush(fp);fclose(fp);
+    snprintf(path, sizeof(path), "%s/shc_x.c", TMP_PATH);
+
+    fp = fopen(path, "w");
+    if (!fp) exit(1);
+
+    for (int i = 0; shc_x[i]; i++) {
+        fprintf(fp, "%s\n", shc_x[i]);
+    }
+
+    fflush(fp);
+    fclose(fp);
 }
 
-int make() {
-	char * cc, * cflags, * ldflags;
-    char cmd[4096];
+/* =========================
+   COMPILE SHARED OBJECT
+   ========================= */
+int make_so() {
+    char cmd[1024];
+    char so_path[256];
+    char c_path[256];
 
-	cc = getenv("CC");
-	if (!cc) cc = "clang";
+    snprintf(so_path, sizeof(so_path), "%s/shc_x.so", TMP_PATH);
+    snprintf(c_path, sizeof(c_path), "%s/shc_x.c", TMP_PATH);
 
-	sprintf(cmd, "%s %s -o %s %s", cc, "-Wall -fpic -shared", "/data/data/com.termux/files/usr/tmp/shc_x.so", "/data/data/com.termux/files/usr/tmp/shc_x.c -ldl");
-	if (system(cmd)) {remove("/data/data/com.termux/files/usr/tmp/shc_x.c"); return -1;}
-	remove("/data/data/com.termux/files/usr/tmp/shc_x.c"); return 0;
+    snprintf(
+        cmd, sizeof(cmd),
+        "clang -Wall -fPIC -shared -o %s %s -ldl",
+        so_path, c_path
+    );
+
+    if (system(cmd) != 0) {
+        remove(c_path);
+        return -1;
+    }
+
+    remove(c_path);
+    return 0;
 }
 
-void arc4_hardrun(void * str, int len) {
-    //Decode locally
+/* =========================
+   MAIN HARDENED RUN
+   ========================= */
+void arc4_hardrun(void *str, int len) {
     char tmp2[len];
-    char tmp3[len+1024];
-    memcpy(tmp2, str, len);
-
-	unsigned char tmp, * ptr = (unsigned char *)tmp2;
+    unsigned char *ptr;
+    unsigned char tmp;
     int lentmp = len;
     int pid, status;
-    pid = fork();
+    char so_path[256];
+
+    memcpy(tmp2, str, len);
+    ptr = (unsigned char *)tmp2;
+
+    snprintf(so_path, sizeof(so_path), "%s/shc_x.so", TMP_PATH);
 
     shc_x_file();
-    if (make()) {exit(1);}
+    if (make_so() != 0) exit(1);
 
-    setenv("LD_PRELOAD","/data/data/com.termux/files/usr/tmp/shc_x.so",1);
+    setenv("LD_PRELOAD", so_path, 1);
 
-    if(pid==0) {
+    pid = fork();
+    if (pid == 0) {
 
-        //Start tracing to protect from dump & trace
+        /* Anti-trace */
         if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0) {
             kill(getpid(), SIGKILL);
             _exit(1);
         }
 
-        //Decode Bash
-        while (len > 0) {
+        /* Decode */
+        while (len--) {
             indx++;
             tmp = stte[indx];
             jndx += tmp;
@@ -9573,35 +9630,23 @@ void arc4_hardrun(void * str, int len) {
             tmp += stte[indx];
             *ptr ^= stte[tmp];
             ptr++;
-            len--;
         }
 
-        //Do the magic
-        sprintf(tmp3, "%s %s", "'********' 21<<<", tmp2);
-
-        //Exec bash script //fork execl with 'sh -c'
+        /* Execute decoded script */
         system(tmp2);
 
-        //Empty script variable
+        /* Cleanup */
         memcpy(tmp2, str, lentmp);
+        remove(so_path);
 
-        //Clean temp
-        remove("/data/data/com.termux/files/usr/tmp/shc_x.so");
-
-        //Sinal to detach ptrace
         ptrace(PTRACE_DETACH, 0, 0, 0);
         exit(0);
     }
-    else {wait(&status);}
 
-    /* Seccomp Sandboxing - Start */
-    seccomp_hardening();
-
+    wait(&status);
     exit(0);
 }
-#endif /* HARDENING */
 
-/*
  * Key with file invariants. 
  */
 int key_with_file(char * file)
