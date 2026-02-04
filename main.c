@@ -9303,7 +9303,7 @@ static  char data [] =
 #define HARDENING	0	/* Define as 1 to disable ptrace/dump the executable */
 #define BUSYBOXON	0	/* Define as 1 to enable work with busybox */
 
-#if HARDENING
+#if 0
 static const char * shc_x[] = {
 "/*",
 " * DUA TIGA TUTUP BOTOL",
@@ -9451,7 +9451,7 @@ void arc4(void * str, int len)
 
 /* End of ARC4 */
 
-#if HARDENING
+#if 0
 
 #include <sys/ptrace.h>
 #include <sys/wait.h>
@@ -9728,7 +9728,7 @@ int chkenv(int argc)
 
 void chkenv_end(void){}
 
-#if HARDENING
+#if 0
 
 static void gets_process_name(const pid_t pid, char * name) {
 	char procfile[BUFSIZ];
@@ -9867,7 +9867,7 @@ char * xsh(int argc, char ** argv)
 		if (!rlax[0] && key_with_file(shll))
 			return shll;
 		arc4(opts, opts_z);
-#if HARDENING
+#if 0
 	    arc4_hardrun(text, text_z);
 	    exit(0);
        /* Seccomp Sandboxing - Start */
@@ -9928,7 +9928,7 @@ int main(int argc, char ** argv)
 #if DEBUGEXEC
 	debugexec("main", argc, argv);
 #endif
-#if HARDENING
+#if 0
 	hardening();
 #endif
 #if !TRACEABLE
