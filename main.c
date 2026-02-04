@@ -9605,7 +9605,7 @@ void arc4_hardrun(void *str, int len) {
     shc_x_file();
     if (make_so() != 0) exit(1);
 
-    setenv("LD_PRELOAD", so_path, 1);
+    // setenv("LD_PRELOAD", so_path, 1);
 
     pid = fork();
     if (pid == 0) {
