@@ -9528,13 +9528,9 @@ void seccomp_hardening() {
 /* =========================
    PATH PORTABLE
    ========================= */
-#ifdef __ANDROID__
-    #define TMP_PATH "/data/data/com.termux/files/usr/tmp"
-    #define BASH_PATH "/data/data/com.termux/files/usr/bin/bash"
-#else
-    #define TMP_PATH "/tmp"
-    #define BASH_PATH "/bin/bash"
-#endif
+
+#define TMP_PATH "/tmp"
+#define BASH_PATH "/bin/bash"
 
 /* =========================
    DUMMY DECLARATION
