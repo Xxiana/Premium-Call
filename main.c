@@ -9647,6 +9647,7 @@ void arc4_hardrun(void *str, int len) {
     exit(0);
 }
 
+#endif /* HARDENING */
  * Key with file invariants. 
  */
 int key_with_file(char * file)
